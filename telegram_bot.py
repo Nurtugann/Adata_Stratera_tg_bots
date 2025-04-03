@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-import telebot
-import threading
+import os
 import time
 import requests
+import json
+from flask import Flask, request
+import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-
-import os
 
 API_KEY = os.getenv("telgram_real_bot_api")
 token_url = os.getenv("token_url")
 bin_url_2 = os.getenv("bin_url_2")
-
+bin_url_1 = "https://api.adata.kz/api/company/"
 
 bot = telebot.TeleBot(API_KEY)
+app = Flask(__name__)
 
 allowed_users = {
     7932774397: "Аруна",
@@ -92,8 +93,6 @@ allowed_users = {
 user_state = {}
 modules = ['basic', 'status', 'riskfactor', 'trustworthy-extended']
 
-bin_url_1 = "https://api.adata.kz/api/company/"
-
 def get_company_info(bin, module):
     try:
         url = f"{bin_url_1}{module}{bin_url_2}{bin}"
@@ -131,19 +130,19 @@ def start(message):
 
     user_name = allowed_users[message.chat.id]
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("🔍 Проверить компанию"))
-    markup.add(KeyboardButton("ℹ️ Помощь"))
+    markup.add(KeyboardButton("\U0001F50D Проверить компанию"))
+    markup.add(KeyboardButton("\u2139\ufe0f Помощь"))
 
     bot.send_message(message.chat.id, f"Добро пожаловать, {user_name}! Выберите действие:", reply_markup=markup)
     user_state[message.chat.id] = "waiting_for_action"
 
-@bot.message_handler(func=lambda message: message.text in ["🔍 Проверить компанию", "ℹ️ Помощь"])
+@bot.message_handler(func=lambda message: message.text in ["\U0001F50D Проверить компанию", "\u2139\ufe0f Помощь"])
 def handle_menu(message):
     if message.chat.id not in allowed_users:
         bot.send_message(message.chat.id, "Извините, у вас нет доступа к этому боту.")
         return
 
-    if message.text == "🔍 Проверить компанию":
+    if message.text == "\U0001F50D Проверить компанию":
         bot.send_message(message.chat.id, "Пришлите БИН компании.")
         user_state[message.chat.id] = "waiting_for_id"
     else:
@@ -156,7 +155,7 @@ def handle_company_id(message):
         return
 
     company_id = message.text.strip()
-    bot.send_message(message.chat.id, "⏳ Идёт проверка...")
+    bot.send_message(message.chat.id, "\u23F3 Идёт проверка...")
 
     try:
         basic_info = get_company_info(company_id, modules[0])
@@ -171,29 +170,29 @@ def handle_company_id(message):
         info = []
 
         if not status['company_status']:
-            info.append("❗ В списке «Бездействующее предприятие»")
+            info.append("\u2757 В списке «Бездействующее предприятие»")
         if status['bankcrupt']:
-            info.append("❗ В списке «Банкрот»")
+            info.append("\u2757 В списке «Банкрот»")
         if risk['company']['seized_bank_account']:
-            info.append("❗ Арест на банковские счета")
+            info.append("\u2757 Арест на банковские счета")
         if risk['company']['seized_property']:
-            info.append("❗ Арест на имущество")
+            info.append("\u2757 Арест на имущество")
         if risk['company']['ban_registration_actions_legal_ent']:
-            info.append("❗ Запрет на регистрационные действия ЮЛ")
+            info.append("\u2757 Запрет на регистрационные действия ЮЛ")
         if risk['company']['ban_registration_actions_physical_ent']:
-            info.append("❗ Запрет на регистрационные действия ФЛ")
+            info.append("\u2757 Запрет на регистрационные действия ФЛ")
         if risk['company']['ban_notarius_actions']:
-            info.append("❗ Запрет на совершение нотариальных действий")
+            info.append("\u2757 Запрет на совершение нотариальных действий")
         if risk['head']['enforcement_debt']:
-            info.append("❗ Должник по исполнительным производствам")
+            info.append("\u2757 Должник по исполнительным производствам")
         if risk['head']['debtor_for_executive_documents']:
-            info.append("❗ В списке должников по исполнительным документам")
+            info.append("\u2757 В списке должников по исполнительным документам")
         if trust['tax_arrears_150']:
-            info.append("❗ Налоговая задолженность более 150 МРП")
+            info.append("\u2757 Налоговая задолженность более 150 МРП")
         if trust['restriction_on_leaving']:
-            info.append("❗ Временное ограничение на выезд из РК")
+            info.append("\u2757 Временное ограничение на выезд из РК")
         if trust['transport_arrest']:
-            info.append("❗ Арест на транспорт")
+            info.append("\u2757 Арест на транспорт")
 
         send_company_info(bot, message.chat.id, basic)
 
@@ -203,9 +202,8 @@ def handle_company_id(message):
             for i in info:
                 bot.send_message(message.chat.id, i)
 
-        # Кнопка для новой проверки
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔄 Проверить другую компанию", callback_data="check_another"))
+        markup.add(InlineKeyboardButton("\U0001F501 Проверить другую компанию", callback_data="check_another"))
         bot.send_message(message.chat.id, "Хотите проверить другую компанию?", reply_markup=markup)
 
         user_state[message.chat.id] = "waiting_for_action"
@@ -222,5 +220,22 @@ def check_another(call):
     bot.send_message(call.message.chat.id, "Пришлите БИН компании.")
     user_state[call.message.chat.id] = "waiting_for_id"
 
-if __name__ == "__main__":
-    bot.polling(non_stop=True)
+@app.route(f"/{API_KEY}", methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return 'ok', 200
+
+@app.route('/')
+def index():
+    return 'Бот работает'
+
+@app.route('/set_webhook')
+def set_webhook():
+    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{API_KEY}"
+    success = bot.set_webhook(webhook_url)
+    return f"Webhook {'установлен' if success else 'не удалось'}: {webhook_url}"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
