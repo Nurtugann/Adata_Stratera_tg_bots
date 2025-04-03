@@ -10,6 +10,7 @@ import os
 
 API_KEY = os.getenv("telgram_copy_bot_api")
 token_url = os.getenv("token_url")
+bin_url_2 = os.getenv("bin_url_2")
 
 
 bot = telebot.TeleBot(API_KEY)
@@ -22,7 +23,6 @@ user_state = {}
 modules = ['basic', 'status', 'riskfactor', 'trustworthy-extended']
 
 bin_url_1 = "https://api.adata.kz/api/company/"
-bin_url_2 = "/ZVloUOB6nHzxcHfs4jPJEW12V2YxEgY?iinBin="
 
 def get_company_info(bin, module):
     try:
