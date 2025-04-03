@@ -11,6 +11,9 @@ import os
 API_KEY = os.getenv("telgram_copy_bot_api")
 token_url = os.getenv("token_url")
 
+print("🔐 API_KEY:", API_KEY)
+
+
 
 bot = telebot.TeleBot(API_KEY)
 
