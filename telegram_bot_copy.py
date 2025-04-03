@@ -6,7 +6,12 @@ import requests
 import json
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-API_KEY = "7874511133:AAGjB4lZYPAhDY6evUAA9o20KIhFnTxLSuk"
+import os
+
+API_KEY = os.getenv("telgram_copy_bot_api")
+token_url = os.getenv("token_url")
+
+
 bot = telebot.TeleBot(API_KEY)
 
 allowed_users = {
@@ -18,7 +23,6 @@ modules = ['basic', 'status', 'riskfactor', 'trustworthy-extended']
 
 bin_url_1 = "https://api.adata.kz/api/company/"
 bin_url_2 = "/ZVloUOB6nHzxcHfs4jPJEW12V2YxEgY?iinBin="
-token_url = "https://api.adata.kz/api/company/info/check/ZVloUOB6nHzxcHfs4jPJEW12V2YxEgY?token="
 
 def get_company_info(bin, module):
     try:
