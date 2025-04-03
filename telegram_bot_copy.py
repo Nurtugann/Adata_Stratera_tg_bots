@@ -8,7 +8,7 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 import os
 
-API_KEY = os.getenv("telgram_copy_bot_api")
+API_KEY = "7874511133:AAEp6fbV7lM3lfGoGkQgApI7CyYvMMl9NAM"
 token_url = os.getenv("token_url")
 bin_url_2 = os.getenv("bin_url_2")
 
@@ -152,9 +152,6 @@ def check_another(call):
     bot.send_message(call.message.chat.id, "Пришлите БИН компании.")
     user_state[call.message.chat.id] = "waiting_for_id"
 
-# Запуск бота
-def polling():
-    bot.polling(non_stop=True, interval=0)
+if __name__ == "__main__":
+    bot.polling(non_stop=True)
 
-thread = threading.Thread(target=polling)
-thread.start()
