@@ -24,10 +24,13 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 
 bin_url_1 = "https://api.adata.kz/api/company/"
 bin_url_2 = "/ZVloUOB6nHzxcHfs4jPJEW12V2YxEgY?iinBin="
-token_url = "https://api.adata.kz/api/company/info/check/ZVloUOB6nHzxcHfs4jPJEW12V2YxEgY?token="
 
 modules = ['basic', 'status', 'riskfactor', 'trustworthy-extended']
 
+import os
+
+API_KEY = os.getenv("telgram_real_bot_api")
+token_url = os.getenv("token_url")
 
 def get_company_info(bin, module):
     bin_url = bin_url_1 + module + bin_url_2
@@ -49,7 +52,6 @@ def get_company_info(bin, module):
         else:
             return {}
 
-API_KEY = "7527203334:AAHUe5_O_9ZBHN88rkv3bAQmq9Qh28KWdHI"
 bot = telebot.TeleBot(API_KEY)
 
 user_state = {}
