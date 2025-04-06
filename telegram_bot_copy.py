@@ -44,12 +44,48 @@ def get_company_info(bin, module):
         print("Ошибка при запросе данных:", e)
         return {}
 
-def send_company_info(bot, chat_id, basic):
-    bot.send_message(chat_id, 'Полное наименование компании: ' + basic.get('name_ru', '—'))
-    bot.send_message(chat_id, 'Дата регистрации: ' + basic.get('date_registration', '—'))
-    bot.send_message(chat_id, f"ОКЭД ({basic.get('oked_id', '—')}): {basic.get('oked', '—')}")
-    bot.send_message(chat_id, 'Юридический адрес: ' + basic.get('legal_address', '—'))
-    bot.send_message(chat_id, 'ФИО руководителя: ' + basic.get('fullname_director', '—'))
+def format_company_info(basic, status, risk, trust):
+    lines = []
+    lines.append(f"🏢 *{basic.get('name_ru', '—')}*")
+    lines.append(f"📅 Дата регистрации: {basic.get('date_registration', '—')}")
+    lines.append(f"🏷 ОКЭД ({basic.get('oked_id', '—')}): {basic.get('oked', '—')}")
+    lines.append(f"📍 Юр. адрес: {basic.get('legal_address', '—')}")
+    lines.append(f"👤 Руководитель: {basic.get('fullname_director', '—')}")
+
+    warnings = []
+
+    if not status['company_status']:
+        warnings.append("❗ В списке «Бездействующее предприятие»")
+    if status['bankcrupt']:
+        warnings.append("❗ В списке «Банкрот»")
+    if risk['company']['seized_bank_account']:
+        warnings.append("❗ Арест на банковские счета")
+    if risk['company']['seized_property']:
+        warnings.append("❗ Арест на имущество")
+    if risk['company']['ban_registration_actions_legal_ent']:
+        warnings.append("❗ Запрет на регистрационные действия ЮЛ")
+    if risk['company']['ban_registration_actions_physical_ent']:
+        warnings.append("❗ Запрет на регистрационные действия ФЛ")
+    if risk['company']['ban_notarius_actions']:
+        warnings.append("❗ Запрет на нотариальные действия")
+    if risk['head']['enforcement_debt']:
+        warnings.append("❗ Долги по исполнительным производствам")
+    if risk['head']['debtor_for_executive_documents']:
+        warnings.append("❗ В списке должников по исполнительным документам")
+    if trust['tax_arrears_150']:
+        warnings.append("❗ Налоговая задолженность >150 МРП")
+    if trust['restriction_on_leaving']:
+        warnings.append("❗ Ограничение на выезд из РК")
+    if trust['transport_arrest']:
+        warnings.append("❗ Арест на транспорт")
+
+    if warnings:
+        lines.append("\n⚠️ *Риски:*")
+        lines += warnings
+    else:
+        lines.append("\n✅ *Проблем не найдено*")
+
+    return "\n".join(lines)
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -84,6 +120,10 @@ def handle_company_id(message):
         return
 
     company_id = message.text.strip()
+    if not company_id.isdigit() or len(company_id) != 12:
+        bot.send_message(message.chat.id, "❗ Введите корректный 12-значный БИН.")
+        return
+
     bot.send_message(message.chat.id, "\u23F3 Идёт проверка...")
 
     try:
@@ -96,40 +136,8 @@ def handle_company_id(message):
         risk = get_company_info(company_id, modules[2])['data']
         trust = get_company_info(company_id, modules[3])['data']
 
-        info = []
-
-        if not status['company_status']:
-            info.append("\u2757 В списке «Бездействующее предприятие»")
-        if status['bankcrupt']:
-            info.append("\u2757 В списке «Банкрот»")
-        if risk['company']['seized_bank_account']:
-            info.append("\u2757 Арест на банковские счета")
-        if risk['company']['seized_property']:
-            info.append("\u2757 Арест на имущество")
-        if risk['company']['ban_registration_actions_legal_ent']:
-            info.append("\u2757 Запрет на регистрационные действия ЮЛ")
-        if risk['company']['ban_registration_actions_physical_ent']:
-            info.append("\u2757 Запрет на регистрационные действия ФЛ")
-        if risk['company']['ban_notarius_actions']:
-            info.append("\u2757 Запрет на совершение нотариальных действий")
-        if risk['head']['enforcement_debt']:
-            info.append("\u2757 Должник по исполнительным производствам")
-        if risk['head']['debtor_for_executive_documents']:
-            info.append("\u2757 В списке должников по исполнительным документам")
-        if trust['tax_arrears_150']:
-            info.append("\u2757 Налоговая задолженность более 150 МРП")
-        if trust['restriction_on_leaving']:
-            info.append("\u2757 Временное ограничение на выезд из РК")
-        if trust['transport_arrest']:
-            info.append("\u2757 Арест на транспорт")
-
-        send_company_info(bot, message.chat.id, basic)
-
-        if not info:
-            bot.send_message(message.chat.id, "Проблем нет ✅")
-        else:
-            for i in info:
-                bot.send_message(message.chat.id, i)
+        message_text = format_company_info(basic, status, risk, trust)
+        bot.send_message(message.chat.id, message_text, parse_mode='Markdown')
 
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("\U0001F501 Проверить другую компанию", callback_data="check_another"))
@@ -167,4 +175,4 @@ def set_webhook():
     return f"Webhook {'установлен' if success else 'не удалось'}: {webhook_url}"
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=10001, debug=True)
